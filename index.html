@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>✨ 두근두근 번호 뽑기 ✨</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 귀여운 폰트 (Jua) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Jua', sans-serif;
+            background-color: #FFF5F5; /* 연한 파스텔 핑크 배경 */
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        /* 3D 버튼 스타일 */
+        .btn-3d {
+            transition: all 0.1s;
+            box-shadow: 0px 5px 0px 0px rgba(0,0,0,0.1);
+        }
+        .btn-3d:active:not(:disabled) {
+            transform: translateY(5px);
+            box-shadow: 0px 0px 0px 0px rgba(0,0,0,0.1);
+        }
+        .btn-3d:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            box-shadow: 0px 5px 0px 0px rgba(0,0,0,0.05);
+        }
+
+        /* 번호 표시 영역 애니메이션 */
+        .pop-animation {
+            animation: pop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        @keyframes pop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.3) rotate(-5deg); color: #FF9AA2; }
+            100% { transform: scale(1) rotate(0deg); }
+        }
+
+        .shake-animation {
+            animation: shake 0.1s infinite;
+        }
+
+        @keyframes shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            10% { transform: translate(-1px, -2px) rotate(-1deg); }
+            20% { transform: translate(-3px, 0px) rotate(1deg); }
+            30% { transform: translate(3px, 2px) rotate(0deg); }
+            40% { transform: translate(1px, -1px) rotate(1deg); }
+            50% { transform: translate(-1px, 2px) rotate(-1deg); }
+            60% { transform: translate(-3px, 1px) rotate(0deg); }
+            70% { transform: translate(3px, 1px) rotate(-1deg); }
+            80% { transform: translate(-1px, -1px) rotate(1deg); }
+            90% { transform: translate(1px, 2px) rotate(0deg); }
+            100% { transform: translate(1px, -2px) rotate(-1deg); }
+        }
+
+        /* 토스트 메시지 애니메이션 */
+        .toast-show {
+            animation: slideUp 0.3s ease-out forwards;
+        }
+        .toast-hide {
+            animation: slideDown 0.3s ease-in forwards;
+        }
+
+        @keyframes slideUp {
+            from { bottom: -50px; opacity: 0; }
+            to { bottom: 20px; opacity: 1; }
+        }
+        @keyframes slideDown {
+            from { bottom: 20px; opacity: 1; }
+            to { bottom: -50px; opacity: 0; }
+        }
+
+        /* 종이꽃가루(Confetti) 컨테이너 */
+        #confetti-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 50;
+            overflow: hidden;
+        }
+
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            top: -10px;
+            opacity: 0;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-4">
+
+    <!-- 메인 컨테이너 -->
+    <div class="bg-white rounded-[40px] shadow-2xl p-8 w-full max-w-md text-center border-4 border-[#FFB7B2]">
+        
+        <!-- 타이틀 -->
+        <h1 class="text-4xl text-[#FF9AA2] mb-6 drop-shadow-sm">🍀 행운의 번호 뽑기 🍀</h1>
+
+        <!-- 설정 영역 -->
+        <div class="flex flex-col gap-4 mb-8 bg-[#FDF6FD] p-4 rounded-2xl border-2 border-[#E2F0CB]">
+            <div class="flex items-center justify-between">
+                <label for="total-students" class="text-lg text-gray-600">전체 학생 수 (최대 35명):</label>
+                <input type="number" id="total-students" min="1" max="35" value="30" 
+                    class="w-20 p-2 text-center rounded-xl border-2 border-[#FFDAC1] focus:outline-none focus:border-[#FF9AA2] text-xl font-bold text-gray-700">
+            </div>
+            
+            <label class="flex items-center justify-center gap-3 cursor-pointer group">
+                <div class="relative">
+                    <input type="checkbox" id="exclude-duplicate" checked class="sr-only">
+                    <div class="block bg-gray-200 w-14 h-8 rounded-full transition-colors group-hover:bg-gray-300 shadow-inner" id="toggle-bg"></div>
+                    <div class="dot absolute left-1 top-1 bg-white w-6 h-6 rounded-full transition-transform shadow-md" id="toggle-dot"></div>
+                </div>
+                <span class="text-lg text-gray-600 select-none">중복 제외하기</span>
+            </label>
+        </div>
+
+        <!-- 번호 표시 화면 -->
+        <div class="relative w-48 h-48 mx-auto mb-8 bg-[#E2F0CB] rounded-full border-8 border-[#B5EAD7] shadow-inner flex items-center justify-center">
+            <span id="number-display" class="text-8xl text-gray-700 drop-shadow-md">?</span>
+        </div>
+
+        <!-- 버튼 영역 -->
+        <div class="flex gap-4 justify-center mb-8">
+            <button id="draw-btn" class="btn-3d flex-1 bg-[#FFB7B2] hover:bg-[#FF9AA2] text-white text-2xl py-4 rounded-2xl shadow-[0_5px_0_0_#E59A95]">
+                뽑기! 🎯
+            </button>
+            <button id="reset-btn" class="btn-3d bg-gray-200 hover:bg-gray-300 text-gray-600 text-xl px-6 rounded-2xl shadow-[0_5px_0_0_#B0B0B0]">
+                초기화
+            </button>
+        </div>
+
+        <!-- 기록 영역 -->
+        <div class="text-left">
+            <h2 class="text-xl text-gray-600 mb-3 border-b-2 border-dashed border-gray-200 pb-2">📜 당첨된 번호들</h2>
+            <div id="history-container" class="flex flex-wrap gap-2 min-h-[60px] p-2 bg-[#F9F9F9] rounded-xl border-2 border-gray-100">
+                <!-- 번호가 여기에 추가됩니다 -->
+                <span class="text-gray-400 text-sm mt-2 ml-2 w-full text-center" id="empty-history">아직 뽑힌 번호가 없어요!</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 토스트 메시지 (알림창 대체) -->
+    <div id="toast" class="fixed bottom-[-50px] bg-gray-800 text-white px-6 py-3 rounded-full text-lg shadow-lg opacity-0 transition-opacity z-50 pointer-events-none">
+        메시지
+    </div>
+
+    <!-- 종이꽃가루 컨테이너 -->
+    <div id="confetti-container"></div>
+
+    <script>
+        // DOM 요소
+        const totalStudentsInput = document.getElementById('total-students');
+        const excludeDuplicateCheck = document.getElementById('exclude-duplicate');
+        const toggleBg = document.getElementById('toggle-bg');
+        const toggleDot = document.getElementById('toggle-dot');
+        const drawBtn = document.getElementById('draw-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const numberDisplay = document.getElementById('number-display');
+        const historyContainer = document.getElementById('history-container');
+        const emptyHistoryText = document.getElementById('empty-history');
+        const toastEl = document.getElementById('toast');
+        const confettiContainer = document.getElementById('confetti-container');
+
+        // 상태 변수
+        let history = [];
+        let isDrawing = false;
+        let toastTimeout;
+
+        // 토글 스위치 UI 업데이트
+        function updateToggleUI() {
+            if (excludeDuplicateCheck.checked) {
+                toggleBg.classList.replace('bg-gray-200', 'bg-[#B5EAD7]');
+                toggleBg.classList.replace('group-hover:bg-gray-300', 'group-hover:bg-[#A3D9C5]');
+                toggleDot.style.transform = 'translateX(24px)';
+            } else {
+                toggleBg.classList.replace('bg-[#B5EAD7]', 'bg-gray-200');
+                toggleBg.classList.replace('group-hover:bg-[#A3D9C5]', 'group-hover:bg-gray-300');
+                toggleDot.style.transform = 'translateX(0)';
+            }
+        }
+        
+        excludeDuplicateCheck.addEventListener('change', updateToggleUI);
+        updateToggleUI(); // 초기 상태 반영
+
+        // 토스트 메시지 띄우기 (alert 대체)
+        function showToast(message) {
+            toastEl.textContent = message;
+            toastEl.classList.remove('toast-hide');
+            toastEl.classList.add('toast-show');
+            
+            clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                toastEl.classList.remove('toast-show');
+                toastEl.classList.add('toast-hide');
+            }, 3000);
+        }
+
+        // 종이꽃가루 효과
+        function triggerConfetti() {
+            const colors = ['#FF9AA2', '#FFB7B2', '#FFDAC1', '#E2F0CB', '#B5EAD7', '#C7CEEA'];
+            for (let i = 0; i < 50; i++) {
+                const confetti = document.createElement('div');
+                confetti.classList.add('confetti');
+                
+                // 랜덤 스타일
+                const color = colors[Math.floor(Math.random() * colors.length)];
+                const left = Math.random() * 100; // 0 ~ 100vw
+                const animDuration = Math.random() * 2 + 2; // 2 ~ 4s
+                const delay = Math.random() * 0.5;
+                const size = Math.random() * 8 + 6; // 6px ~ 14px
+
+                confetti.style.backgroundColor = color;
+                confetti.style.left = `${left}%`;
+                confetti.style.width = `${size}px`;
+                confetti.style.height = `${size}px`;
+                confetti.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px'; // 원형 or 사각형
+                
+                // 애니메이션 설정
+                confetti.animate([
+                    { transform: `translate3d(0,0,0) rotate(0deg)`, opacity: 1, top: '-10px' },
+                    { transform: `translate3d(${Math.random()*100 - 50}px, 100vh, 0) rotate(${Math.random()*720}deg)`, opacity: 0, top: '100vh' }
+                ], {
+                    duration: animDuration * 1000,
+                    delay: delay * 1000,
+                    easing: 'cubic-bezier(.37,0,.63,1)',
+                    fill: 'forwards'
+                });
+
+                confettiContainer.appendChild(confetti);
+
+                // 끝나면 제거
+                setTimeout(() => {
+                    confetti.remove();
+                }, (animDuration + delay) * 1000);
+            }
+        }
+
+        // 초기화 로직
+        function reset() {
+            history = [];
+            historyContainer.innerHTML = '';
+            historyContainer.appendChild(emptyHistoryText);
+            emptyHistoryText.style.display = 'block';
+            numberDisplay.textContent = '?';
+            numberDisplay.classList.remove('pop-animation');
+            numberDisplay.style.color = '#374151'; // 원래 색상(gray-700)으로
+        }
+
+        resetBtn.addEventListener('click', reset);
+
+        // 뽑기 로직
+        drawBtn.addEventListener('click', () => {
+            if (isDrawing) return;
+
+            const maxStudents = parseInt(totalStudentsInput.value, 10);
+            const isExclude = excludeDuplicateCheck.checked;
+
+            // 예외 처리
+            if (isNaN(maxStudents) || maxStudents < 1 || maxStudents > 35) {
+                showToast("학생 수는 1명에서 35명 사이로 입력해주세요! 😅");
+                return;
+            }
+
+            // 후보군 생성
+            let pool = [];
+            for (let i = 1; i <= maxStudents; i++) {
+                if (!isExclude || !history.includes(i)) {
+                    pool.push(i);
+                }
+            }
+
+            // 뽑을 수 있는 번호가 없는 경우
+            if (pool.length === 0) {
+                showToast("모든 번호를 다 뽑았습니다! 🎉 (초기화 후 다시 진행하세요)");
+                return;
+            }
+
+            // 뽑기 시작 (상태 변경)
+            isDrawing = true;
+            drawBtn.disabled = true;
+            resetBtn.disabled = true;
+            totalStudentsInput.disabled = true;
+            excludeDuplicateCheck.disabled = true;
+
+            // UI 초기화
+            numberDisplay.classList.remove('pop-animation');
+            numberDisplay.style.color = '#374151'; // 회색
+            numberDisplay.classList.add('shake-animation'); // 덜덜 떨리는 이펙트
+
+            let counter = 0;
+            const rouletteSpeed = 50; // 밀리초
+            const rouletteDuration = 1500; // 총 1.5초 동안 돌아감
+
+            // 룰렛 연출용 랜덤 뽑기
+            const rouletteInterval = setInterval(() => {
+                const randomVisualNum = pool[Math.floor(Math.random() * pool.length)];
+                numberDisplay.textContent = randomVisualNum;
+            }, rouletteSpeed);
+
+            // 실제 당첨 완료
+            setTimeout(() => {
+                clearInterval(rouletteInterval);
+                numberDisplay.classList.remove('shake-animation');
+
+                // 최종 번호 확정
+                const finalNum = pool[Math.floor(Math.random() * pool.length)];
+                numberDisplay.textContent = finalNum;
+                
+                // 강조 애니메이션 및 축하 효과
+                numberDisplay.classList.add('pop-animation');
+                triggerConfetti();
+
+                // 기록에 추가
+                history.push(finalNum);
+                
+                // 기록 UI 업데이트
+                if (history.length === 1) {
+                    emptyHistoryText.style.display = 'none';
+                }
+                
+                const historyBadge = document.createElement('div');
+                historyBadge.className = 'w-10 h-10 flex items-center justify-center bg-white rounded-full shadow-sm border-2 border-[#FFDAC1] text-[#FF9AA2] font-bold text-lg animate-[pop_0.3s_ease-out_forwards]';
+                historyBadge.textContent = finalNum;
+                historyContainer.appendChild(historyBadge);
+
+                // 버튼 상태 복구
+                isDrawing = false;
+                drawBtn.disabled = false;
+                resetBtn.disabled = false;
+                totalStudentsInput.disabled = false;
+                excludeDuplicateCheck.disabled = false;
+
+            }, rouletteDuration);
+        });
+    </script>
+</body>
+</html>
